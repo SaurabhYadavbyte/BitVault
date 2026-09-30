@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault - Advanced Password Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved"></i> SecureVault
+        </div>
+        <div class="nav-links">
+            <span id="user-greeting"></span>
+            <button class="btn btn-outline" id="nav-login-btn">Login / Register</button>
+            <button class="btn btn-outline" id="nav-logout-btn" style="display:none;">Logout</button>
+        </div>
+    </nav>
+
+    <section id="view-landing" class="view active">
+        <div class="landing-content">
+            <div class="hero">
+                <h1>Ironclad Security, <br><span class="highlight">Simplified.</span></h1>
+                <p>Generate crack-proof passwords, memorable passphrases, and securely store them in your encrypted local vault.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large" id="get-started-btn">Get Started for Free</button>
+                    <button class="btn btn-secondary btn-large" id="try-guest-btn">Use as Guest</button>
+                </div>
+            </div>
+            
+            <div class="features-section">
+                <div class="feature-card glass-panel">
+                    <i class="fa-solid fa-lock feature-icon"></i>
+                    <h3>AES-256 Encryption</h3>
+                    <p>Your passwords are encrypted using military-grade standards before being stored in the database.</p>
+                </div>
+                <div class="feature-card glass-panel">
+                    <i class="fa-solid fa-user-check feature-icon"></i>
+                    <h3>Verified Accounts</h3>
+                    <p>Secure email verification ensures only you have access to your personal vault.</p>
+                </div>
+                <div class="feature-card glass-panel">
+                    <i class="fa-solid fa-server feature-icon"></i>
+                    <h3>Local Execution</h3>
+                    <p>Designed to run locally with an embedded SQLite vault, keeping your data out of public cloud servers.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-auth" class="view">
+        <div class="auth-card glass-panel">
+            <h2 id="auth-title">Welcome Back</h2>
+            <p class="auth-subtitle" id="auth-subtitle">Login to access your vault</p>
+            
+            <!-- Registration Fields (Hidden by default) -->
+            <div id="register-fields" style="display:none;">
+                <div class="input-group">
+                    <i class="fa-regular fa-id-badge"></i>
+                    <input type="text" id="auth-fullname" placeholder="Full Name">
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" id="auth-email" placeholder="Email Address">
+                </div>
+            </div>
+
+            <!-- Common Fields -->
+            <div id="login-fields">
+                <div class="input-group">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" id="auth-username" placeholder="Username">
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="auth-password" placeholder="Password">
+                </div>
+            </div>
+
+            <!-- OTP Field (Hidden by default) -->
+            <div id="otp-fields" style="display:none;">
+                <div class="input-group">
+                    <i class="fa-solid fa-key"></i>
+                    <input type="text" id="auth-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+                </div>
+            </div>
+            
+            <p id="auth-msg" class="auth-msg"></p>
+            <button class="btn btn-primary btn-full" id="auth-action-btn">Login</button>
+            
+            <div class="auth-switch" id="auth-switch-container">
+                <span id="auth-switch-text">New here? </span>
+                <a href="#" id="auth-switch-link">Create an account</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-dashboard" class="view">
+        <div class="dashboard-container">
+            <aside class="sidebar glass-panel">
+                <button class="tab-btn active" onclick="openTab(event, 'generator-tab')">
+                    <i class="fa-solid fa-key"></i> Generator
+                </button>
+                <button class="tab-btn" onclick="openTab(event, 'checker-tab')">
+                    <i class="fa-solid fa-microscope"></i> Strength Checker
+                </button>
+                <button class="tab-btn" id="vault-tab-btn" onclick="openTab(event, 'vault-tab')" style="display:none;">
+                    <i class="fa-solid fa-vault"></i> My Vault
+                </button>
+            </aside>
+
+            <main class="dashboard-content glass-panel">
+                
+                <div id="generator-tab" class="tab-content active">
+                    <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generator</h2>
+                    
+                    <div class="mode-selector">
+                        <label class="mode-radio">
+                            <input type="radio" name="gen-mode" value="password" checked> 
+                            <span>Random Password</span>
+                        </label>
+                        <label class="mode-radio">
+                            <input type="radio" name="gen-mode" value="passphrase"> 
+                            <span>Memorable Passphrase</span>
+                        </label>
+                    </div>
+
+                    <div class="result-box">
+                        <span id="result" class="result-text"></span>
+                        <button class="icon-btn" id="clipboard-btn" title="Copy to clipboard"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                    
+                    <div id="save-container" class="save-box" style="display:none;">
+                        <input type="text" id="site-name" placeholder="Website Name (e.g. Netflix)">
+                        <button class="btn btn-primary" id="save-btn">Save</button>
+                    </div>
+                    <p id="save-msg" class="status-msg"></p>
+
+                    <div class="settings-grid" id="password-settings">
+                        <div class="setting-row range-row">
+                            <label>Length: <span id="length-val" class="badge">12</span></label>
+                            <input type="range" id="length" min="4" max="32" value="12">
+                        </div>
+                        <div class="checkbox-grid">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="uppercase" checked> 
+                                <span class="checkmark"></span> Uppercase (A-Z)
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="lowercase" checked> 
+                                <span class="checkmark"></span> Lowercase (a-z)
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="numbers" checked> 
+                                <span class="checkmark"></span> Numbers (0-9)
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="symbols" checked> 
+                                <span class="checkmark"></span> Symbols (!@#$)
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="exclude-ambiguous"> 
+                                <span class="checkmark"></span> Exclude Ambiguous (O, 0, l, 1)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-grid" id="passphrase-settings" style="display:none;">
+                        <div class="setting-row range-row">
+                            <label>Words: <span id="words-val" class="badge">4</span></label>
+                            <input type="range" id="words" min="3" max="8" value="4">
+                        </div>
+                        <div class="setting-row">
+                            <label>Separator:</label>
+                            <select id="separator" class="modern-select">
+                                <option value="-">Hyphen (-)</option>
+                                <option value=" ">Space ( )</option>
+                                <option value=".">Period (.)</option>
+                                <option value="_">Underscore (_)</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-grid" style="margin-top: 15px;">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="capitalize-words" checked> 
+                                <span class="checkmark"></span> Capitalize Words
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="passphrase-number"> 
+                                <span class="checkmark"></span> Include Number
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" id="passphrase-symbol"> 
+                                <span class="checkmark"></span> Include Special Char
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full mt-2" id="generate-btn">Generate Now</button>
+                </div>
+
+                <div id="checker-tab" class="tab-content" style="display: none;">
+                    <h2><i class="fa-solid fa-microscope"></i> Strength Checker</h2>
+                    <p class="subtitle">Test a password to see how long it would take a hacker to crack it.</p>
+                    
+                    <div class="input-group">
+                        <i class="fa-solid fa-key"></i>
+                        <input type="text" id="password-input" placeholder="Type a password here...">
+                    </div>
+                    
+                    <div class="strength-meter-container">
+                        <div id="strength-bar" class="strength-bar"></div>
+                    </div>
+                    
+                    <div class="strength-header">
+                        <span id="strength-text" class="strength-label">Strength: None</span>
+                        <span id="crack-time" class="crack-time"></span>
+                    </div>
+                    
+                    <div class="suggestions-box" id="suggestions">
+                    </div>
+                </div>
+
+                <div id="vault-tab" class="tab-content" style="display: none;">
+                    <div class="vault-header">
+                        <h2><i class="fa-solid fa-vault"></i> My Vault</h2>
+                        <button class="icon-btn" id="refresh-vault-btn" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                    
+                    <div id="vault-list" class="vault-list">
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </section>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
