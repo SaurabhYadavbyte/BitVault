@@ -208,6 +208,11 @@ def verify_otp():
         else:
             return jsonify({"error": "Invalid OTP"}), 400
 
+from itsdangerous import URLSafeTimedSerializer
+
+# Create serializer using the SECRET_KEY for JWT-like signed tokens
+serializer = URLSafeTimedSerializer(SECRET_KEY if isinstance(SECRET_KEY, str) else SECRET_KEY.decode('utf-8'))
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -223,9 +228,12 @@ def login():
             if user[3] == 0:
                 return jsonify({"error": "Please verify your email before logging in."}), 403
             
+            # Generate a cryptographically signed token instead of returning raw ID
+            secure_token = serializer.dumps(user[0])
+            
             return jsonify({
                 "message": "Login successful", 
-                "token": user[0], 
+                "token": secure_token, 
                 "username": user[1],
                 "full_name": user[4]
             }), 200
@@ -241,6 +249,11 @@ def save_password():
 
     if not token or not site_name or not password:
         return jsonify({"error": "Missing fields"}), 400
+        
+    try:
+        user_id = serializer.loads(token, max_age=86400) # Valid for 24 hours
+    except:
+        return jsonify({"error": "Invalid or expired session"}), 401
 
     encrypted_password = cipher_suite.encrypt(password.encode('utf-8')).decode('utf-8')
 
@@ -248,7 +261,7 @@ def save_password():
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT INTO passwords (user_id, site_name, encrypted_password) VALUES (?, ?, ?)", 
-                           (token, site_name, encrypted_password))
+                           (user_id, site_name, encrypted_password))
             conn.commit()
             return jsonify({"message": "Password saved to vault"}), 201
     except Exception as e:
@@ -259,11 +272,16 @@ def get_passwords():
     token = request.args.get('token')
     if not token:
         return jsonify({"error": "Unauthorized"}), 401
+        
+    try:
+        user_id = serializer.loads(token, max_age=86400)
+    except:
+        return jsonify({"error": "Invalid or expired session"}), 401
 
     try:
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, site_name, encrypted_password FROM passwords WHERE user_id = ?", (token,))
+            cursor.execute("SELECT id, site_name, encrypted_password FROM passwords WHERE user_id = ?", (user_id,))
             rows = cursor.fetchall()
 
             decrypted_passwords = []
@@ -289,11 +307,16 @@ def delete_password(p_id):
     token = request.args.get('token')
     if not token:
         return jsonify({"error": "Unauthorized"}), 401
+        
+    try:
+        user_id = serializer.loads(token, max_age=86400)
+    except:
+        return jsonify({"error": "Invalid or expired session"}), 401
 
     try:
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM passwords WHERE id = ? AND user_id = ?", (p_id, token))
+            cursor.execute("DELETE FROM passwords WHERE id = ? AND user_id = ?", (p_id, user_id))
             conn.commit()
             return jsonify({"message": "Password deleted"}), 200
     except Exception as e:
