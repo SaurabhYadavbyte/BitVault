@@ -59,7 +59,7 @@ function setAuthMode(mode) {
         authSwitchLink.innerText = "Create an account";
     } else if (mode === 'register') {
         authTitle.innerText = "Create Account";
-        authSubtitle.innerText = "Join SecureVault today";
+        authSubtitle.innerText = "Join BitVault today";
         registerFields.style.display = 'block';
         loginFields.style.display = 'block';
         otpFields.style.display = 'none';

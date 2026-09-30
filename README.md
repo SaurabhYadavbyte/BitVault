@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="https://img.icons8.com/color/96/000000/shield.png" alt="SecureVault Logo">
-  <h1>SecureVault</h1>
+  <img src="https://img.icons8.com/color/96/000000/shield.png" alt="BitVault Logo">
+  <h1>BitVault</h1>
   <p><strong>A Modern, Full-Stack Password Generator & Encrypted Local Vault</strong></p>
   
   <p>
@@ -16,7 +16,7 @@
 ---
 
 ## 📖 Overview
-SecureVault is a highly secure, privacy-focused password management utility. It allows users to generate cryptographically secure passwords and memorable passphrases, strictly evaluate their strength against dictionary and brute-force attacks, and store them in an encrypted, zero-knowledge local SQLite vault.
+BitVault is a highly secure, privacy-focused password management utility. It allows users to generate cryptographically secure passwords and memorable passphrases, strictly evaluate their strength against dictionary and brute-force attacks, and store them in an encrypted, zero-knowledge local SQLite vault.
 
 ## ✨ Key Features
 - **AES-256 Server-Side Encryption**: Passwords are encrypted before ever touching the database using the Python `cryptography` library.

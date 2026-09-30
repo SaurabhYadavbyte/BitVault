@@ -70,12 +70,12 @@ def send_otp_email(receiver_email, full_name, otp):
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 40px 0;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); text-align: center;">
             <div style="font-size: 24px; font-weight: bold; color: #6366f1; margin-bottom: 20px;">
-                🛡️ SecureVault
+                🛡️ BitVault
             </div>
             <h2 style="color: #333333;">Verify Your Email</h2>
             <p style="color: #666666; font-size: 16px; line-height: 1.5;">
                 Hello <strong>{full_name}</strong>,<br>
-                Thank you for creating an account with SecureVault. To complete your registration and secure your vault, please use the verification code below:
+                Thank you for creating an account with BitVault. To complete your registration and secure your vault, please use the verification code below:
             </p>
             <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                 <span style="font-size: 32px; font-weight: bold; color: #0f172a; letter-spacing: 5px;">{otp}</span>
@@ -85,7 +85,7 @@ def send_otp_email(receiver_email, full_name, otp):
             </p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
             <p style="color: #cbd5e1; font-size: 12px;">
-                &copy; 2026 SecureVault Security Team. All rights reserved.
+                &copy; 2026 BitVault Security Team. All rights reserved.
             </p>
         </div>
     </body>
@@ -103,8 +103,8 @@ def send_otp_email(receiver_email, full_name, otp):
 
     try:
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = 'Your SecureVault Verification Code'
-        msg['From'] = f"SecureVault <{EMAIL_SENDER}>"
+        msg['Subject'] = 'Your BitVault Verification Code'
+        msg['From'] = f"BitVault <{EMAIL_SENDER}>"
         msg['To'] = receiver_email
 
         msg.attach(MIMEText(html_content, 'html'))
