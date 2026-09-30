@@ -70,7 +70,7 @@ function setAuthMode(mode) {
         authSwitchLink.innerText = "Login here";
     } else if (mode === 'otp') {
         authTitle.innerText = "Verify Email";
-        authSubtitle.innerText = `We sent a 6-digit code to your email. Check your server console for local testing.`;
+        authSubtitle.innerText = `We sent a 6-digit code to your email. This code is valid for 5 minutes.`;
         registerFields.style.display = 'none';
         loginFields.style.display = 'none';
         otpFields.style.display = 'block';
@@ -268,7 +268,11 @@ async function loadVault() {
                 data.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'vault-item';
-                    div.innerHTML = `<span class="vault-site">${item.site_name}</span><span class="vault-pass">${item.password}</span>`;
+                    div.innerHTML = `
+                        <span class="vault-site">${item.site_name}</span>
+                        <span class="vault-pass">${item.password}</span>
+                        <button class="icon-btn delete-btn" onclick="deletePassword(${item.id})" style="color:var(--accent-red); margin-left:10px;"><i class="fa-solid fa-trash"></i></button>
+                    `;
                     vaultList.appendChild(div);
                 });
             }
@@ -277,6 +281,22 @@ async function loadVault() {
         }
     } catch (err) {
         vaultList.innerHTML = '<p style="color:var(--accent-red)">Failed to connect to server.</p>';
+    }
+}
+
+async function deletePassword(id) {
+    if(!confirm("Are you sure you want to delete this password?")) return;
+    try {
+        const response = await fetch(`${API_URL}/passwords/${id}?token=${currentUser.token}`, {
+            method: 'DELETE'
+        });
+        if(response.ok) {
+            loadVault();
+        } else {
+            alert("Failed to delete password.");
+        }
+    } catch(err) {
+        alert("Error connecting to server.");
     }
 }
 

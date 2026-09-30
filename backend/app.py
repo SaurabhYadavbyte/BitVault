@@ -9,15 +9,14 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
 
-# For deployment: Load environment variables
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# Define the path to the frontend folder
 FRONTEND_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
 
 app = Flask(__name__, static_folder=FRONTEND_FOLDER, static_url_path='')
@@ -27,15 +26,11 @@ CORS(app)
 def serve_index():
     return app.send_static_file('index.html')
 
+DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.sqlite')
 
-DATABASE = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'database.sqlite')
-
-# Secure Vault Key (Must be set in .env in production!)
-# Fallback to hardcoded only for local dev if .env is missing
 SECRET_KEY = os.environ.get('VAULT_SECRET_KEY', '10S0qXUo_oI_sM3n3aHk-_5zR3w6o9x_Q2m-5sXlY0E=')
 cipher_suite = Fernet(SECRET_KEY.encode() if isinstance(SECRET_KEY, str) else SECRET_KEY)
 
-# Email config from .env
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 EMAIL_SENDER = os.environ.get('EMAIL_SENDER', '')
@@ -64,6 +59,13 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
+        
+        # Add otp_expiry column safely if it doesn't exist
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN otp_expiry DATETIME")
+        except sqlite3.OperationalError:
+            pass # Column already exists
+            
         conn.commit()
 
 init_db()
@@ -89,7 +91,7 @@ def send_otp_email(receiver_email, full_name, otp):
                 <span style="font-size: 32px; font-weight: bold; color: #0f172a; letter-spacing: 5px;">{otp}</span>
             </div>
             <p style="color: #94a3b8; font-size: 14px;">
-                This code will expire in 10 minutes. If you did not request this, please ignore this email.
+                This code will expire in 5 minutes. If you did not request this, please ignore this email.
             </p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
             <p style="color: #cbd5e1; font-size: 12px;">
@@ -100,7 +102,6 @@ def send_otp_email(receiver_email, full_name, otp):
     </html>
     """
     
-    # If credentials are not set in .env, simulate the email
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
         print("\n" + "="*50)
         print(f"📧 SIMULATED EMAIL TO: {receiver_email}")
@@ -114,9 +115,7 @@ def send_otp_email(receiver_email, full_name, otp):
         msg['Subject'] = 'Your BitVault Verification Code'
         msg['From'] = f"BitVault <{EMAIL_SENDER}>"
         msg['To'] = receiver_email
-
         msg.attach(MIMEText(html_content, 'html'))
-
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
@@ -139,22 +138,37 @@ def register():
 
     password_hash = generate_password_hash(password)
     otp = generate_otp()
+    expiry = datetime.utcnow() + timedelta(minutes=5)
 
     try:
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (full_name, email, username, password_hash, otp) VALUES (?, ?, ?, ?, ?)", 
-                           (full_name, email, username, password_hash, otp))
+            
+            # Check if user already exists
+            cursor.execute("SELECT id, is_verified FROM users WHERE username = ? OR email = ?", (username, email))
+            existing_user = cursor.fetchone()
+            
+            if existing_user:
+                if existing_user[1] == 1:
+                    return jsonify({"error": "Verified account with this email or username already exists."}), 400
+                else:
+                    # User exists but not verified. Update their details and send new OTP.
+                    cursor.execute("""
+                        UPDATE users 
+                        SET full_name=?, email=?, username=?, password_hash=?, otp=?, otp_expiry=? 
+                        WHERE id=?
+                    """, (full_name, email, username, password_hash, otp, expiry.strftime('%Y-%m-%d %H:%M:%S'), existing_user[0]))
+            else:
+                cursor.execute("""
+                    INSERT INTO users (full_name, email, username, password_hash, otp, otp_expiry) 
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (full_name, email, username, password_hash, otp, expiry.strftime('%Y-%m-%d %H:%M:%S')))
+                
             conn.commit()
             
-            # Send HTML Email
             send_otp_email(email, full_name, otp)
-            
             return jsonify({"message": "Registration initiated. OTP sent.", "username": username}), 201
-    except sqlite3.IntegrityError as e:
-        if 'email' in str(e).lower():
-            return jsonify({"error": "Email already exists"}), 400
-        return jsonify({"error": "Username already exists"}), 400
+            
     except Exception as e:
         return jsonify({"error": "Database error"}), 500
 
@@ -169,15 +183,26 @@ def verify_otp():
 
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, otp FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT id, otp, otp_expiry FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        user_id, saved_otp = user
+        user_id, saved_otp, otp_expiry_str = user
+        
+        if not saved_otp or not otp_expiry_str:
+            return jsonify({"error": "Invalid OTP state."}), 400
+            
+        try:
+            otp_expiry = datetime.strptime(otp_expiry_str, '%Y-%m-%d %H:%M:%S')
+            if datetime.utcnow() > otp_expiry:
+                return jsonify({"error": "OTP has expired. Please register again."}), 400
+        except ValueError:
+            pass
+
         if saved_otp == otp:
-            cursor.execute("UPDATE users SET is_verified = 1, otp = NULL WHERE id = ?", (user_id,))
+            cursor.execute("UPDATE users SET is_verified = 1, otp = NULL, otp_expiry = NULL WHERE id = ?", (user_id,))
             conn.commit()
             return jsonify({"message": "Email verified successfully!"}), 200
         else:
@@ -258,7 +283,21 @@ def get_passwords():
             return jsonify(decrypted_passwords), 200
     except Exception as e:
         return jsonify({"error": "Database error"}), 500
+        
+@app.route('/passwords/<int:p_id>', methods=['DELETE'])
+def delete_password(p_id):
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        with sqlite3.connect(DATABASE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM passwords WHERE id = ? AND user_id = ?", (p_id, token))
+            conn.commit()
+            return jsonify({"message": "Password deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": "Database error"}), 500
 
 if __name__ == '__main__':
-    print("Starting Flask server on http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
