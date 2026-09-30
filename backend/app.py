@@ -17,8 +17,16 @@ try:
 except ImportError:
     pass
 
-app = Flask(__name__)
+# Define the path to the frontend folder
+FRONTEND_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
+
+app = Flask(__name__, static_folder=FRONTEND_FOLDER, static_url_path='')
 CORS(app)
+
+@app.route('/')
+def serve_index():
+    return app.send_static_file('index.html')
+
 
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'database.sqlite')
 
